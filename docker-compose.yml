@@ -1,0 +1,143 @@
+version: '3.8'
+
+networks:
+  backend-network:
+    driver: bridge
+  web:
+    external: false
+
+volumes:
+  redis_data:
+  postgresql_data:
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend
+    environment:
+      # Redis
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+
+      # PostgreSQL
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+
+      # MongoDB
+      SPRING_DATA_MONGODB_URI: ${SPRING_DATA_MONGODB_URI}
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TOKEN_VALIDITY: ${JWT_ACCESS_TOKEN_VALIDITY}
+      JWT_REFRESH_TOKEN_VALIDITY: ${JWT_REFRESH_TOKEN_VALIDITY}
+
+      # Kakao
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
+      KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI}
+      KAKAO_LOCAL_KEYWORD_SEARCH_URI: ${KAKAO_LOCAL_KEYWORD_SEARCH_URI}
+      KAKAO_DIRECTIONS_URI: ${KAKAO_DIRECTIONS_URI}
+
+      # TourAPI
+      TOURAPI_KR_MOBILEOS: WEB
+      TOURAPI_FR_MOBILEOS: WIN
+      TOURAPI_MOBILEAPP: ToTem
+      TOURAPI_TYPE: json
+      TOURAPI_AREA_CODE: 39
+      TOURAPI_SERVICE_KEY: ${TOURAPI_SERVICE_KEY}
+      TOURAPI_KR_ENDPOINT: https://apis.data.go.kr/B551011/KorService2
+      TOURAPI_EN_ENDPOINT: https://apis.data.go.kr/B551011/EngService2
+      TOURAPI_CN_ENDPOINT: https://apis.data.go.kr/B551011/ChsService2
+      TOURAPI_TW_ENDPOINT: https://apis.data.go.kr/B551011/ChtService2
+      TOURAPI_JP_ENDPOINT: https://apis.data.go.kr/B551011/JpnService2
+
+      # PDF
+      SPRING_MVC_STATIC_PATH_PATTERN: /files/**
+      SPRING_WEB_RESOURCES_STATIC_LOCATIONS: file:/app/pdfs/
+    networks:
+      - backend-network
+      - web
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - mongodb
+      - postgresql
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`localhost`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.services.backend.loadbalancer.server.port=8080"
+
+  frontend:
+    build:
+     context: ./frontend
+     dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - web
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_BACKEND_URL=http://backend:8080
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`localhost`) && PathPrefix(`/`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.services.frontend.loadbalancer.server.port=3000"      
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend-network
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - backend-network
+    restart: unless-stopped
+
+  postgresql:
+    image: postgres:17
+    container_name: postgresql
+    environment:
+      POSTGRES_DB: ToTem
+      POSTGRES_USER: ${SPRING_DATASOURCE_USERNAME}
+      POSTGRES_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data
+    networks:
+      - backend-network
+    restart: unless-stopped
+
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./traefik-dynamic.yml:/etc/traefik/dynamic.yml:ro"
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=backend-network"
+      - "--entrypoints.web.address=:80"
+    networks:
+      - web
+    restart: unless-stopped
