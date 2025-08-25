@@ -9,6 +9,7 @@ networks:
 volumes:
   redis_data:
   postgresql_data:
+  gradle_cache:
 
 services:
   backend:
@@ -64,6 +65,8 @@ services:
     depends_on:
       - redis
       - postgresql
+    volumes:
+      - gradle_cache:/home/gradle/.gradle
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.backend.rule=Host(`localhost`)"
