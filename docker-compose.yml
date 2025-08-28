@@ -61,7 +61,7 @@ services:
     networks:
       - backend-network
       - web
-    restart: unless-stopped
+    # restart: unless-stopped
     depends_on:
       redis:
         condition: service_started
