@@ -63,8 +63,10 @@ services:
       - web
     restart: unless-stopped
     depends_on:
-      - redis
-      - postgresql
+      redis:
+        condition: service_started
+      postgresql:
+        condition: service_healthy
     env_file: ./.env
     volumes:
       - gradle_cache:/home/gradle/.gradle
@@ -116,6 +118,11 @@ services:
     networks:
       - backend-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ToTem"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   traefik:
     image: traefik:v2.10
