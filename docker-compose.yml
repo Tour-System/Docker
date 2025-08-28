@@ -72,7 +72,7 @@ services:
       - gradle_cache:/home/gradle/.gradle
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`localhost`) && (PathPrefix(`/api`) || PathPrefix(`/swagger-ui`) || PathPrefix(`/swagger`) || PathPrefix(`/swagger-ui.html`) || PathPrefix(`/v3/api-docs`)"
+      - "traefik.http.routers.backend.rule=Host(`localhost`) && (PathPrefix(`/api`) || PathPrefix(`/swagger-ui`) || PathPrefix(`/swagger`) || PathPrefix(`/swagger-ui.html`) || PathPrefix(`/v3/api-docs`))"
       - "traefik.http.routers.backend.entrypoints=web"
       - "traefik.http.services.backend.loadbalancer.server.port=8080"
 
