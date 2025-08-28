@@ -17,8 +17,8 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: ../BE
+      dockerfile: ../backend/Dockerfile
     container_name: backend
     environment:
       # Redis
