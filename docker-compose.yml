@@ -65,6 +65,7 @@ services:
     depends_on:
       - redis
       - postgresql
+    env_file: ./.env
     volumes:
       - gradle_cache:/home/gradle/.gradle
     labels:
